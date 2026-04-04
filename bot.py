@@ -1,17 +1,75 @@
-# This is a sample Python script.
-python3 --version
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
+from openpyxl import load_workbook
 
+# 🔐 Токен из Render (Environment Variables)
+API_TOKEN = os.getenv("BOT_TOKEN")
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+if not API_TOKEN:
+    raise ValueError("❌ BOT_TOKEN не найден! Добавь его в Render Environment Variables")
 
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+# --- СТАТУСЫ ---
+STAGES = {
+    1: "🛒 Заказ оформлен",
+    2: "🇺🇸 На складе в США",
+    3: "🇪🇺 Транзитный рейс в Европе",
+    4: "🇷🇺 Таможня в Москве",
+    5: "✅ Доставлен в РФ"
+}
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+# --- ПОИСК ЗАКАЗА В EXCEL ---
+def find_order(order_id):
+    wb = load_workbook("orders1.xlsx")
+    ws = wb.active
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if str(row[0]) == str(order_id):
+            return {
+                "order_id": row[0],
+                "status": row[3]
+            }
+    return None
+
+# --- СТАРТ ---
+@dp.message_handler(commands=['start'])
+async def start(message: types.Message):
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("📦 Отследить заказ")
+    await message.answer("Выберите действие:", reply_markup=kb)
+
+# --- КНОПКА ---
+@dp.message_handler(lambda m: m.text == "📦 Отследить заказ")
+async def track(message: types.Message):
+    await message.answer("Введите номер заказа:")
+
+# --- ОБРАБОТКА ---
+@dp.message_handler()
+async def handle(message: types.Message):
+    order_id = message.text.strip()
+    order = find_order(order_id)
+
+    if not order:
+        await message.answer("❌ Заказ не найден")
+        return
+
+    stage = int(order["status"])
+    current_status = STAGES.get(stage, "Неизвестный статус")
+
+    text = f"""
+📦 Заказ: {order['order_id']}
+
+📍 Статус:
+{current_status}
+"""
+
+    await message.answer(text)
+
+# --- ЗАПУСК ---
+if __name__ == "__main__":
+    print("🚀 БОТ ЗАПУЩЕН")
+    executor.start_polling(dp, skip_updates=True)
 
