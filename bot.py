@@ -19,27 +19,48 @@ STAGES = {
     5: "✅ Доставлен в РФ"
 }
 
+def normalize_text(value):
+    if value is None:
+        return ""
+
+    text = str(value).strip()
+
+    # убираем частый excel-формат типа 2.0
+    if text.endswith(".0"):
+        text = text[:-2]
+
+    # убираем неразрывные пробелы и лишние пробелы
+    text = text.replace("\xa0", "").strip()
+
+    return text
+
+def normalize_status(value):
+    text = normalize_text(value)
+
+    if not text:
+        return None
+
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
 def find_order(order_id):
-    wb = load_workbook("orders1.xlsx")
+    wb = load_workbook("orders1.xlsx", data_only=True)
     ws = wb.active
 
-    print("=== ПРОВЕРЯЮ EXCEL ===")
-    print("ИЩУ:", order_id)
-    print("ЛИСТ:", ws.title)
+    search_id = normalize_text(order_id)
 
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        print("СТРОКА:", row)
-        cell_value = str(row[0]).strip() if row[0] is not None else ""
-        search_value = str(order_id).strip()
+    for row in ws.iter_rows(min_row=2, max_col=4, values_only=True):
+        row_id = normalize_text(row[0])
+        row_status = normalize_status(row[3])
 
-        if cell_value == search_value:
-            print("✅ НАЙДЕН:", row)
+        if row_id == search_id:
             return {
-                "order_id": row[0],
-                "status": row[3]
+                "order_id": row_id,
+                "status": row_status
             }
 
-    print("❌ НЕ НАЙДЕН")
     return None
 
 @dp.message_handler(commands=['start'])
@@ -61,15 +82,18 @@ async def handle(message: types.Message):
         await message.answer("❌ Заказ не найден")
         return
 
-    stage = int(order["status"])
-    current_status = STAGES.get(stage, "Неизвестный статус")
+    stage = order["status"]
 
-    text = f"""
-📦 Заказ: {order['order_id']}
+    if stage not in STAGES:
+        await message.answer("❌ У заказа некорректный статус")
+        return
+
+    current_status = STAGES[stage]
+
+    text = f"""📦 Заказ: {order['order_id']}
 
 📍 Статус:
-{current_status}
-"""
+{current_status}"""
 
     await message.answer(text)
 
