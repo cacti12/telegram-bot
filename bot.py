@@ -3,7 +3,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from openpyxl import load_workbook
 
-# 🔐 токен из Render
 API_TOKEN = os.getenv("BOT_TOKEN")
 
 if not API_TOKEN:
@@ -12,7 +11,6 @@ if not API_TOKEN:
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# --- СТАТУСЫ ---
 STAGES = {
     1: "🛒 Заказ оформлен",
     2: "🇺🇸 На складе в США",
@@ -21,32 +19,39 @@ STAGES = {
     5: "✅ Доставлен в РФ"
 }
 
-# --- ПОИСК ЗАКАЗА ---
 def find_order(order_id):
     wb = load_workbook("orders1.xlsx")
     ws = wb.active
 
+    print("ПРОВЕРЯЮ ФАЙЛ EXCEL")
+    print("ИЩУ ЗАКАЗ:", order_id)
+
     for row in ws.iter_rows(min_row=2, values_only=True):
-        if str(row[0]) == str(order_id):
+        print("СТРОКА:", row)
+
+        cell_value = str(row[0]).strip() if row[0] is not None else ""
+        search_value = str(order_id).strip()
+
+        if cell_value == search_value:
+            print("✅ НАЙДЕН ЗАКАЗ:", row)
             return {
                 "order_id": row[0],
                 "status": row[3]
             }
+
+    print("❌ ЗАКАЗ НЕ НАЙДЕН")
     return None
 
-# --- СТАРТ ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📦 Отследить заказ")
     await message.answer("Выберите действие:", reply_markup=kb)
 
-# --- КНОПКА ---
 @dp.message_handler(lambda m: m.text == "📦 Отследить заказ")
 async def track(message: types.Message):
     await message.answer("Введите номер заказа:")
 
-# --- ОБРАБОТКА ---
 @dp.message_handler()
 async def handle(message: types.Message):
     order_id = message.text.strip()
@@ -68,12 +73,8 @@ async def handle(message: types.Message):
 
     await message.answer(text)
 
-# --- ЗАПУСК (ОЧЕНЬ ВАЖНО) ---
 if __name__ == "__main__":
-    import asyncio
-
     async def on_startup(dp):
-        # 🔥 убираем конфликт Telegram
         await bot.delete_webhook(drop_pending_updates=True)
 
     print("🚀 БОТ ЗАПУЩЕН")
