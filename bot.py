@@ -3,11 +3,11 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from openpyxl import load_workbook
 
-# 🔐 Токен из Render (Environment Variables)
+# 🔐 токен из Render
 API_TOKEN = os.getenv("BOT_TOKEN")
 
 if not API_TOKEN:
-    raise ValueError("❌ BOT_TOKEN не найден! Добавь его в Render Environment Variables")
+    raise ValueError("❌ BOT_TOKEN не найден! Добавь его в Render")
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -21,7 +21,7 @@ STAGES = {
     5: "✅ Доставлен в РФ"
 }
 
-# --- ПОИСК ЗАКАЗА В EXCEL ---
+# --- ПОИСК ЗАКАЗА ---
 def find_order(order_id):
     wb = load_workbook("orders1.xlsx")
     ws = wb.active
@@ -68,8 +68,14 @@ async def handle(message: types.Message):
 
     await message.answer(text)
 
-# --- ЗАПУСК ---
+# --- ЗАПУСК (ОЧЕНЬ ВАЖНО) ---
 if __name__ == "__main__":
+    import asyncio
+
+    async def on_startup(dp):
+        # 🔥 убираем конфликт Telegram
+        await bot.delete_webhook(drop_pending_updates=True)
+
     print("🚀 БОТ ЗАПУЩЕН")
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
 
