@@ -23,23 +23,23 @@ def find_order(order_id):
     wb = load_workbook("orders1.xlsx")
     ws = wb.active
 
-    print("ПРОВЕРЯЮ ФАЙЛ EXCEL")
-    print("ИЩУ ЗАКАЗ:", order_id)
+    print("=== ПРОВЕРЯЮ EXCEL ===")
+    print("ИЩУ:", order_id)
+    print("ЛИСТ:", ws.title)
 
     for row in ws.iter_rows(min_row=2, values_only=True):
         print("СТРОКА:", row)
-
         cell_value = str(row[0]).strip() if row[0] is not None else ""
         search_value = str(order_id).strip()
 
         if cell_value == search_value:
-            print("✅ НАЙДЕН ЗАКАЗ:", row)
+            print("✅ НАЙДЕН:", row)
             return {
                 "order_id": row[0],
                 "status": row[3]
             }
 
-    print("❌ ЗАКАЗ НЕ НАЙДЕН")
+    print("❌ НЕ НАЙДЕН")
     return None
 
 @dp.message_handler(commands=['start'])
